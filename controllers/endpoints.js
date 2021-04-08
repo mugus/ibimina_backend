@@ -56,7 +56,7 @@ exports.members_get_all = (req, res) => {
     var string=JSON.stringify(result);
     let ans = JSON.parse(string);
     console.log(ans);
-    res.status(200).send(ans);
+    res.send(ans);
   });
 };
 
@@ -116,6 +116,31 @@ exports.insert_member = (req, res) => {
       console.log("Email available");
       db.query(sql, [values], (err, result) => {
         if (!err) {
+          
+          let transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: 'm.ibiminagroup@gmail.com',
+              pass: 'ibimina2020'
+            }
+          });
+          const emailToken = jwt.sign({email: `${req.body.email}`},"123456789",{expiresIn: '1h'});
+            let url = `http://localhost:4000/api/confirm/${emailToken}`;
+            let mailOptions = {
+              from: 'm.ibiminagroup@gmail.com',
+              to: req.body.email,
+              subject: 'Sending Email using Node.js',
+              html: `Please click this to confirm :<a href="${url}">${url}</a>`
+            };
+              transporter.sendMail(mailOptions, function(error, info){
+                if (error) {
+                  console.log(error);
+                } else {
+                  console.log('Email sent: ' + info.response);
+                }
+              });
+          
+
           res.status(200).json({ status: 200, message: "member inserted" });
           console.log("Inserted" + result.affectedRows);
         } else {
@@ -260,17 +285,18 @@ exports.insert_ikimina = (req, res) => {
 };
 
 exports.verifyUser = (req, res) => {
-
-  let sql = "UPDATE members SET status=1 WHERE email= ?";
-  let info = [
-    [
-      req.body.email
-    ],
-  ];
-  db.query(sql,[info], (e , inf) => {
-    if(!e) return res.send("email verified");
-    res.send("Email not verified")
-  });
+  console.log(req.params.token);
+  try {
+    const {email: email}  = jwt.verify(req.params.token, "123456789");
+    console.log(email);
+    db.query("UPDATE members SET status=1 WHERE email= ?",email, (e , inf) => {
+      if(!e) return res.redirect('/api/login');
+      res.redirect('/');
+      console.log(e);
+    });
+  } catch (e) {
+    console.log(e);
+  }
 };
 
 // Send membership request into a specific ikimina
@@ -342,6 +368,46 @@ exports.membershipDeposit = (req, res) => {
 
       });
   };
+
+
+// Check membership
+  exports.membership = (req, res) => {
+    let access_token = req.headers['authorization'];
+    if(!access_token) return res.status(401).send({
+      auth: false, msg:"No Token"
+    });
+    const bearer = access_token.split(" ");
+    const bearerToken = bearer[1];
+    token = bearerToken;
+    jwt.verify(token, "Gustavo@125", function(err, decoded){
+      if(err) return res.status(500).send({auth: false,msg:"failed to auth"});
+        let string=JSON.stringify(decoded);
+        let ans = JSON.parse(string);
+  
+        let user = ans.result[0].member_id;
+            let sqli = "SELECT * FROM membership WHERE member_id=?";
+            let datas = [
+              [
+                user
+              ],
+            ];
+            db.query(sqli,[datas], (err , rows) => {
+              if (err) throw err;
+              var string=JSON.stringify(rows);
+              let ans = JSON.parse(string);
+              for(let i = 0; i < ans.length; i++){
+                db.query("SELECT * FROM ibimina WHERE ikimina_id =?",ans[i].ikimina_id, (e,result) => {
+                  let str=JSON.stringify(result);
+                  let ikimina = JSON.parse(str);
+                  console.log(ikimina);
+                  // res.json({ikimina: ikimina);
+                });
+              }
+              res.send(ans);
+            });
+  
+        });
+    };
 // exports.test = (req, res) => {
 //   let access_token = req.headers['authorization'];
 //   if(!access_token) return res.status(401).send({

@@ -24,11 +24,13 @@ routes.delete("/members/:member_id",checkAuth,Ibimina.delete_member);
 routes.get("/ibimina", Ibimina.ibimina_get_all);
 routes.post("/ibimina", checkAuth ,Ibimina.insert_ikimina);
 routes.post("/test" ,Ibimina.test);
-routes.post("/verify" ,Ibimina.verifyUser);
+routes.get("/confirm/:token" ,Ibimina.verifyUser);
 
 
 // membership request
-routes.post("/membership", checkAuth ,Ibimina.membershipRequest);
+routes.post("/ikimina_request", checkAuth ,Ibimina.membershipRequest);
+// Membership
+routes.get("/membership", checkAuth ,Ibimina.membership);
 
 
 routes.post("/deposit", checkAuth ,Ibimina.membershipDeposit);
